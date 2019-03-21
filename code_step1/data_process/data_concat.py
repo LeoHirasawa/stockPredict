@@ -17,14 +17,14 @@ DATE_LIST = ["20130331", "20130630", "20130930", "20131231",
 
 # 每次生成数据之前，修改这几个参数
 # temp数据和最终输出数据的目标目录
-TARGET_PATH = "C4S4_newlabel/"
+TARGET_PATH = "C1S4_newlabel_20171231/"
 # 需要连接的表
 TABLE_TO_CONCAT = "1,2,3,7"
 # 数据集的季度数量
-TRAIN_USE_SEASON_NUM = 4
+TRAIN_USE_SEASON_NUM = 1
 # 例如想要验证的日期为20180930，季度窗口为2，则训练集起始日期为20171231，验证集起始日期为20180331
 # 训练集起始日期，从[XXXX0331, XXXX0630, XXXX0930, XXXX1231]中选择一个
-VALIDATE_Y_DATE = "20180930"
+VALIDATE_Y_DATE = "20171231"
 # label是读取还是计算，0表示读取
 LABEL_CALCULATE = 0
 LABEL_PATH = "New_Label2/"
@@ -549,7 +549,7 @@ def train_data_concator():
 
 
 # 参数为要参与拼接的表
-# selected_stock_traverse(table_to_concat=TABLE_TO_CONCAT)
-# print("each data ok!")
+selected_stock_traverse(table_to_concat=TABLE_TO_CONCAT)
+print("each data ok!")
 train_data_concator()
 print("data all ok!")

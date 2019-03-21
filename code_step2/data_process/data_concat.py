@@ -19,16 +19,16 @@ DATE_LIST = ["20130331", "20130630", "20130930", "20131231",
 
 # 每次生成数据之前，修改这几个参数
 # 要读取的原数据
-DATA_PATH = "C1S4_newlabel/"
+DATA_PATH = "C1S4_newlabel_20171231/"
 # temp数据和最终输出数据的目标目录
-TARGET_PATH = "C1S4_newlabel_hybrid_timestep15/"
+TARGET_PATH = "C1S4_newlabel_hybrid_timestep15_20171231/"
 # 需要加入的时序特征列表
 FEATURE_TO_CONCAT = ["trade_date", "open", "high", "low", "close", "pre_close", "change", "pct_chg", "vol", "amount"]
 
 # 以下三项根据原始数据的CnSm的n和m来确定
 # 例如想要验证的日期为20180930，季度窗口为2，则训练集起始日期为20171231，验证集起始日期为20180331
 # 训练集起始日期，从[XXXX0331, XXXX0630, XXXX0930, XXXX1231]中选择一个
-VALIDATE_Y_DATE = "20180930"
+VALIDATE_Y_DATE = "20171231"
 # 数据集的季度数量
 TRAIN_USE_SEASON_NUM = 1
 # 滑动窗口大小，0代表不滑动
@@ -37,7 +37,7 @@ SLIDE_WINDOW_SIZE = 4
 # 以下为时间相关特征的三个参数
 # 从最终日期向回推多少天
 DAYS = 90
-# 取数据的频率(需要保证能整除DAYS)
+# 取数据的频率(需要保证能整除DAYS)，例如90 / 6 = 15，15就是timestep
 STEP = 6
 # 容错倍率
 FAULT_TOLERANT_RATE = 1.7
