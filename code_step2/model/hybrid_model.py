@@ -1,3 +1,4 @@
+# TODO:小兰写死的收益率计算，改一下
 # TODO:使用tensorboard以及matplotlib进行可视化,pr曲线用tensorboard实在是画不出来，实在不行就用matplotlib吧
 # TODO:保存最好的检查点
 # TODO:动态学习率
@@ -5,10 +6,14 @@
 # TODO:让小兰跑一下（hybrid * 4）
 # TODO:找小兰要DNN平均实验结果，然后综合当前模型结果写报告
 
+# TODO:准备回归数据（超额收益量），单独算好后保存，要能重复利用
+# TODO:写回归模型，得到实验结果
+# TODO:取出两次的y1和y2，用决策树加权，标签仍然是“超额收益量”
 
 import os
 import string
 import tempfile
+import time
 import argparse
 import numpy as np
 import pandas as pd
@@ -22,14 +27,17 @@ from sklearn.metrics import roc_auc_score
 from tensorboard import summary as summary_lib
 import matplotlib.pyplot as plt
 
-TIME_STEP = 3
-TARGET_PATH = "../../data/Train&Test/C1S4_newlabel_hybrid_timestep3/"
+VALIDATE_Y_DATE = "20170930"
+TIME_STEP = 15
+DATA_PATH = "../../data/Train&Test/C1S4_newlabel_hybrid_timestep15_" + VALIDATE_Y_DATE + "/"
 TRAIN_FILE_NAME = "hybrid_train_set.csv"
 VALIDATE_FILE_NAME = "hybrid_validate_set.csv"
 NEW_LABEL2_PATH = "../../data/Common/New_Label2/"
 COLUMNS_TO_DROP = ["ts_code", "ann_date_1", "f_ann_date_1", "end_date_1", "report_type_1", "label", "close_1",
                    "trade_date"]
 SPLIT_FEATURE_NAME = "open"
+TARGET_PATH = "../../data/Train&Test/C1S4_newlabel_hybrid_timestep15_" + VALIDATE_Y_DATE + "_super/"
+MODEL_DIR = "../../data/models/hybrid_"
 
 
 # Create a LocalCLIDebugHook and use it as a monitor when calling fit().
@@ -223,10 +231,15 @@ def result_analyze(predictions, y_validate, eval_result, opt):
     print("预测出1的数量：", class_ids.count(1))
     print("预测出0的数量：", class_ids.count(0))
 
+    # 取出所有预测的原值
+    logits = []
+    for logit in predictions_dict["logits"]:
+        logits.append(float(logit))
+
     # 计算收益率(written by lzn)
     pre = np.array(class_ids)
     df_pre = pd.DataFrame(pre, columns=["pre_y"])
-    valid_set = pd.read_csv(TARGET_PATH + VALIDATE_FILE_NAME)
+    valid_set = pd.read_csv(DATA_PATH + VALIDATE_FILE_NAME)
     valid_set_pre = pd.concat([valid_set, df_pre], axis=1)
     select_ts_code = list(valid_set_pre[valid_set_pre["pre_y"] == 1]["ts_code"])  #####选出预测为1的股票列表
     all_change = 0  #####所有选出的股票的收益值，为分子
@@ -234,9 +247,9 @@ def result_analyze(predictions, y_validate, eval_result, opt):
     for each_stock in select_ts_code:
         path = NEW_LABEL2_PATH + each_stock[:-3] + "_" + each_stock[-2:] + ".csv"
         stock_df = pd.read_csv(path)
-        each_stock_change = stock_df[stock_df["jidu_date"] == 20180930]["s_change"].tolist()[0]
+        each_stock_change = stock_df[stock_df["jidu_date"] == int(VALIDATE_Y_DATE)]["s_change"].tolist()[0]
         all_change += each_stock_change
-        s_date_2_close = stock_df[stock_df["jidu_date"] == 20180930]["s_date_2_close"].tolist()[0]
+        s_date_2_close = stock_df[stock_df["jidu_date"] == int(VALIDATE_Y_DATE)]["s_date_2_close"].tolist()[0]
         s_date_2_close_sum += s_date_2_close
     try:
         final_shouyilv = all_change / s_date_2_close_sum
@@ -258,6 +271,26 @@ def result_analyze(predictions, y_validate, eval_result, opt):
     except Exception as e:
         print("由于没有推荐出任何可购入的股票， 所以无法计算auc和F1值！")
 
+    # 保存实验结果
+    result_file = open(TARGET_PATH + "Experiment_result", "w")
+    result_file.write(time.strftime('%Y.%m.%d', time.localtime(time.time())) + "\n")
+    result_file.write("预测出1的数量：" + str(class_ids.count(1)) + "\n")
+    result_file.write("预测出0的数量：" + str(class_ids.count(0)) + "\n")
+    result_file.write("最终收益率：" + str(final_shouyilv) + "\n")
+    result_file.write(str(confmat) + "\n")
+    result_file.write("预测结果标签：" + str(predictions_dict["class_ids"]) + "\n")
+    result_file.write("预测原结果：" + str(predictions_dict["probabilities"]) + "\n")
+    result_file.write('Test set auc:' + str(roc_auc_score(y_validate.reshape(-1), pre)) + "\n")
+    result_file.write('Test set f1:' + str(2 * precision * recall / (precision + recall)) + "\n")
+    result_file.close()
+
+    # 保存预测结果，将没有规范化的logits保存。
+    logits = np.array(logits).reshape(-1, 1)
+    super_validate_data_left = pd.DataFrame(logits)
+    super_validate_data_left.to_csv(TARGET_PATH + "super_validate_data_left.csv", index=False, index_label=False)
+    print("super_validate_data_left saved!")
+    return None
+
 
 def main(argv):
     ####################################################数据部分########################################################
@@ -267,8 +300,8 @@ def main(argv):
     opt = vars(args)
 
     # 读取数据
-    raw_train_data = pd.read_csv(TARGET_PATH + TRAIN_FILE_NAME)
-    raw_validate_data = pd.read_csv(TARGET_PATH + VALIDATE_FILE_NAME)
+    raw_train_data = pd.read_csv(DATA_PATH + TRAIN_FILE_NAME)
+    raw_validate_data = pd.read_csv(DATA_PATH + VALIDATE_FILE_NAME)
     x_train_left, x_train_right_ndarray, y_train, x_validate_left, x_validate_right_ndarray, y_validate = \
         data_process(
             raw_train_data, raw_validate_data,
@@ -288,8 +321,10 @@ def main(argv):
         dataset = dataset.shuffle(6500)
         # 380列，batch100，所以每次送入模型的tensor.shape是(100，380)，实际显示是(?, 380)
         dataset = dataset.batch(opt["batch_size"])
+        # dataset = dataset.map(map_parser, num_parallel_calls=4)
         dataset = dataset.map(map_parser)
         dataset = dataset.repeat()
+        # dataset = dataset.prefetch(buffer_size=1)
         iterator = dataset.make_one_shot_iterator()
         return iterator.get_next()
         # return dataset
@@ -413,14 +448,17 @@ def main(argv):
                 .apply(input_layer_right)
             conv_2 = tf.keras.layers.Conv1D(filters=4, kernel_size=3, padding="valid", activation=tf.nn.relu)\
                 .apply(input_layer_right)
+            conv_3 = tf.keras.layers.Conv1D(filters=4, kernel_size=5, padding="valid", activation=tf.nn.relu)\
+                .apply(input_layer_right)
 
             # Global Max Pooling层，输出shape=(?, filters)
             # 函数带reduce的说明和pooling有关，类似于"降维"的含义。max说明是选出最大值。
             pool_1 = tf.reduce_max(input_tensor=conv, axis=1)
             pool_2 = tf.reduce_max(input_tensor=conv_2, axis=1)
+            pool_3 = tf.reduce_max(input_tensor=conv_3, axis=1)
 
             # 拼接上层输出的两个tensor, 第二个参数是拼接的维度index，比如shape=(?, 2, 8)里面，2对应的维度index是1
-            pool = tf.concat([pool_1, pool_2], 1)
+            pool = tf.concat([pool_1, pool_2, pool_3], 1)
 
             # MLP层，输出shape=(?, units)
             # units参数代表节点数
@@ -492,17 +530,20 @@ if __name__ == '__main__':
     tf.logging.set_verbosity(tf.logging.INFO)
 
     # 确定输入参数
+    model_dir = MODEL_DIR
     model_structure = ["DNN", "CNN", "LSTM"]
-    batch_size = 100
-    train_steps = 1000
-    model_dir = "./generated_model/hybrid_"
+    batch_size = 50
+    train_steps = 3000
     # 特征选择方法，0为不进行特征选择，1为PCA，2为卡方检验，3为因子分析。
     feature_selection = 1
-    fs_method_threshold = 10
+    fs_method_threshold = 50
+
+    # 根据参数确定模型保存路径
     for model in model_structure:
         model_dir = model_dir + str(model) + "_"
-    model_dir = model_dir + "batchsize" + str(batch_size) + "_" + "steps" + str(train_steps)
+    model_dir = model_dir + "batchsize" + str(batch_size) + "_" + "steps" + str(train_steps) + "_" + VALIDATE_Y_DATE
 
+    # 绑定默认参数
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument('--model_dir', default=model_dir, type=str, help='model dir')
     arg_parser.add_argument('--feature_selection', default=feature_selection, type=int, help='feature_selection method')

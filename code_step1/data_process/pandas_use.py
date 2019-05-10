@@ -44,3 +44,10 @@
 
 # 取出除了["A", "B"]的其他列，不过列会被按照列名的字母顺序自动排序
 # raw_train_data.loc[:, raw_train_data.columns.difference(["A", "B"])]
+
+# 多个dataframe之间进行各种运算
+# temp_super_data_set['Y_pred'] = temp_super_data_set.apply(lambda temp_super_data_set:
+#                                                           temp_super_data_set["y1"] * feature_importances_rfr["0"] +
+#                                                           temp_super_data_set["y2"] * feature_importances_rfr["1"],
+#                                                           axis=1)
+

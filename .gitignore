@@ -3,3 +3,7 @@
 *_record
 *_test.py
 pandas_use.py
+*.png
+Experiment_result*
+*web/
+models/
