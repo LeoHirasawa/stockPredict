@@ -54,6 +54,8 @@ def super_data_producer():
     super_data_set["y2"] = std_scaler.fit_transform(np.array(super_data_set["y2"]).reshape(-1, 1))
     super_data_set["y1"] = minmax_scaler.fit_transform(np.array(super_data_set["y1"]).reshape(-1, 1))
     super_data_set["y2"] = minmax_scaler.fit_transform(np.array(super_data_set["y2"]).reshape(-1, 1))
+    # super_data_set["Y"] = std_scaler.fit_transform(np.array(super_data_set["Y"]).reshape(-1, 1))
+    # super_data_set["Y"] = minmax_scaler.fit_transform(np.array(super_data_set["Y"]).reshape(-1, 1))
 
     # 保存一份源数据，为了将样本与股票代码互相匹配，以备推荐
     origin_super_data_set = pd.concat([stock_code_df, super_data_set], axis=1)
